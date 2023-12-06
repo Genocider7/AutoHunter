@@ -1,23 +1,24 @@
 from pydoc import locate
 from cv2 import imread
-from sys import stdout
+from sys import stdout, argv
 from numpy import asarray, uint8
+from os.path import isfile
 
 def edit_state(state, **kwargs):
     for key, value in kwargs.items():
         state[key.replace('_', ' ')] = value
     return state
 
-def save_state_to_file(state, filename, filename_dict = {}, stream = stdout):
-    with open(filename, 'w') as file:
+def save_state_to_file(state, stream = stdout):
+    with open(state['save file'], 'w') as file:
         for key, value in state.items():
             if key in state['omit keys']:
                 continue
             file.write(key)
             file.write('=')
-            if key in filename_dict.keys():
+            if key in state['filenames'].keys():
                 file.write('file_')
-                file.write(filename_dict[key])
+                file.write(state['filenames'][key])
             else:
                 file.write(type(value).__name__)
                 file.write('_')
@@ -26,7 +27,7 @@ def save_state_to_file(state, filename, filename_dict = {}, stream = stdout):
                 else:
                     file.write(str(value))
             file.write('\n')
-    print('State saved to {}'.format(filename), file = stream)
+    print('State saved to {}'.format(state['save file']), file = stream)
 
 def load_state_from_file(filename, methods, keys_to_omit = []):
     with open(filename, 'r') as file:
@@ -109,3 +110,188 @@ def make_background_transparent(image_cv2, background_color):
             line.append(temp_pixel + [0 if make_transparent[y][x] else 255])
         new_arr.append(line)
     return asarray(new_arr, dtype=uint8)
+
+def new_profile(profile_names, strategies, actions_reset, actions_found, omit_keys, defaults = {}):
+    print('Welcome to the new profile creator.')
+    print('Please pick one of the given options. If you don\'t pick anything, default will be chosen')
+
+    while True:
+        print('Please name your profile (no default available):')
+        name = input()
+        if name in profile_names:
+            print('Name already exists in profile list. Please pick another')
+        else:
+            break
+
+    while True:
+        print('Enter filepath for an image file that program will perform a reset when seen (no default available):')
+        regular = input()
+        if isfile(regular):
+            break
+        else:
+            print('File {} not found'.format(regular))
+    
+    while True:
+        print('Enter filepath for an image file containing shiny pokemon that program will hunt form (no default available):')
+        shiny = input()
+        if isfile(shiny):
+            break
+        else:
+            print('File {} not found'.format(shiny))
+    
+    while True:
+        print('Choose a strategy for hunt. Type \"?\" before the strategy to read explanation')
+        print('Possible strategies: ', end = '')
+        first = True
+        temp_str = ''
+        for strat in strategies.keys():
+            if first:
+                first = False
+            else:
+                temp_str += ', '
+            temp_str += strat.__name__
+        if 'strategy' in defaults.keys():
+            temp_str += ' (default: {})'.format(defaults['strategy'].__name__)
+        else:
+            temp_str += ' (no default available)'
+        print(temp_str)
+        strategy = input().lower()
+        if strategy.startswith('?'):
+            strategy = strategy[1:]
+            check = False
+            for strat in strategies.keys():
+                if strategy == strat.__name__:
+                    print(strategies[strat])
+                    check = True
+            if not check:
+                print('Strategy \"{}\" not found'.format(strategy))
+        elif strategy == '':
+            strategy = defaults['strategy']
+            break
+        else:
+            for strat in strategies.keys():
+                if strategy == strat.__name__:
+                    strategy = strat
+                    break
+            if callable(strategy):
+                break
+            else:
+                print('Strategy \"{}\" not found'.format(strategy))
+
+    while True:
+        print('Choose how program should reset. Type \"?\" before the action to read explanation')
+        print('Possible actions: ', end = '')
+        first = True
+        temp_str = ''
+        for res in actions_reset.keys():
+            if first:
+                first = False
+            else:
+                temp_str += ', '
+            temp_str += res.__name__
+        if 'reset' in defaults.keys():
+            temp_str += ' (default: {})'.format(defaults['reset'].__name__)
+        else:
+            temp_str += ' (no default available)'
+        print(temp_str)
+        reset = input().lower()
+        if reset.startswith('?'):
+            reset = reset[1:]
+            check = False
+            for res in actions_reset.keys():
+                if reset == res.__name__:
+                    print(actions_reset[res])
+                    check = True
+            if not check:
+                print('Action \"{}\" not found'.format(reset))
+        elif reset == '':
+            reset = defaults['reset']
+            break
+        else:
+            for res in actions_reset.keys():
+                if reset == res.__name__:
+                    reset = res
+                    break
+            if callable(reset):
+                break
+            else:
+                print('Action \"{}\" not found'.format(reset))
+
+    while True:
+        print('Choose how program should react to finding a shiny. Type \"?\" before the action to read explanation')
+        print('Possible actions: ', end = '')
+        first = True
+        temp_str = ''
+        for fnd in actions_found.keys():
+            if first:
+                first = False
+            else:
+                temp_str += ', '
+            temp_str += fnd.__name__
+        if 'found' in defaults.keys():
+            temp_str += ' (default: {})'.format(defaults['found'].__name__)
+        else:
+            temp_str += ' (no default available)'
+        print(temp_str)
+        found = input().lower()
+        if found.startswith('?'):
+            found = found[1:]
+            check = False
+            for fnd in actions_found.keys():
+                if found == fnd.__name__:
+                    print(actions_found[fnd])
+                    check = True
+            if not check:
+                print('Action \"{}\" not found'.format(found))
+        elif found == '':
+            found = defaults['found']
+            break
+        else:
+            for fnd in actions_found.keys():
+                if found == fnd.__name__:
+                    found = fnd
+                    break
+            if callable(found):
+                break
+            else:
+                print('Action \"{}\" not found'.format(found))
+    state = {
+        'fps': 10,
+        'strategy': strategy,
+        'reset': reset,
+        'found shiny': found,
+        'counter': 0,
+        'sleep time': 1 / 1000,
+        'do speed up': False,
+        'regular': imread(regular),
+        'shiny': imread(shiny),
+        'action': 'go',
+        'filenames': {
+            'regular': regular,
+            'shiny': shiny
+        },
+        'save file': name + '.sav',
+        'omit keys': omit_keys
+    }
+    return state
+
+def parse_argv(arg_flags, flags_shortened) :
+    params = []
+    flags_not_found = []
+    flags = {}
+    for flag in arg_flags:
+        flags[flag] = False
+    for i in range(1, len(argv)):
+        if argv[i].startswith('--'):
+            if argv[i][2:] in flags.keys():
+                flags[argv[i][2:]] = True
+            else:
+                flags_not_found.append(argv[i])
+        elif argv[i].startswith('-'):
+            if argv[i][1:] in flags_shortened.keys():
+                flags[flags_shortened[argv[i][1:]]] = True
+            else:
+                flags_not_found.append(argv[i])
+        else:
+            params.append(argv[i])
+    return params, flags_not_found, flags

@@ -4,7 +4,7 @@ from time import sleep
 
 def stop(state):
     release('space')
-    save_state_to_file(state, state['save file'], state['filenames'])
+    save_state_to_file(state)
     return edit_state(state, action = 'stop')
 
 def pause(state):
@@ -53,5 +53,5 @@ def stop_hunting(state):
     state['action'] = 'stop'
     release('space')
     print('Found shiny in {} attempts!'.format(state['counter']))
-    save_state_to_file(state, state['save file'], state['filenames'])
+    save_state_to_file(state)
     return state
