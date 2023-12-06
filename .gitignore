@@ -1,0 +1,4 @@
+*.sav
+__pycache__
+*.jpg
+*.png
