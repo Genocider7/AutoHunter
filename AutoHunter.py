@@ -7,8 +7,8 @@ from keyboard import is_pressed, press, release
 from cv2 import matchTemplate, TM_CCOEFF_NORMED, imread
 from utils import save_state_to_file, load_state_from_file, new_profile, parse_argv, clean_state
 from sys import stderr
-from os import listdir
-from os.path import isfile
+from os import listdir, startfile
+from os.path import isfile, join as join_path
 import actions
 
 keys_actions = {
@@ -51,12 +51,15 @@ defaults = {
     'found': actions.stop_and_quit
 }
 
-flags = ['new-profile', 'no-profile']
+flags = ['new-profile', 'no-profile', 'start-game']
 
 shortened_flags = {
     'N': 'new-profile',
-    'O': 'no-profile'
+    'O': 'no-profile',
+    'S': 'start-game'
 }
+
+default_game_location = join_path('games', 'Pokemon Emerald.gba')
 
 def create_new_profile():
     profile_names = [file[:-4] for file in listdir() if isfile(file) and file.endswith('.sav')]
@@ -137,12 +140,12 @@ def main():
         if len(params) < 2:
             print('No specified filenames. Please enter filename for regular image and shiny image', file = stderr)
             return
-        regular = params[0]
+        regular = params.pop(0)
         if not isfile(regular):
             print('File \"{}\" not found'.format(regular), file = stderr)
             return
         regular = imread(regular)
-        shiny = params[1]
+        shiny = params.pop(0)
         if not isfile(shiny):
             print('File \"{}\" not found'.format(shiny), file = stderr)
             return
@@ -150,10 +153,19 @@ def main():
         state = clean_state(defaults['strategy'], defaults['reset'], defaults['found'], regular, shiny)
     else:
         if len(params) > 0:
-            save_file = params[0] + '.sav'
+            save_file = params.pop(0) + '.sav'
         else:
             save_file = 'default.sav'
         state = load_state_from_file(save_file, methods, omit_keys)
+    if parsed_flags['start-game']:
+        if len(params) > 0:
+            game_file = params.pop(0)
+        else:
+            game_file = default_game_location
+        if not isfile(game_file):
+            print('Couldn\'t find a file \"{}\"'.format(game_file), file = stderr)
+            return
+        startfile(game_file)
     while state['action'] != 'stop':
         key_presses = check_commands(state['fps'])
         state = parse_commands(key_presses, state)

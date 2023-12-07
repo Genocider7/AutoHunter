@@ -67,44 +67,52 @@ def same_pixels(pixel1, pixel2):
             return False
     return True
 
-def make_background_transparent(image_cv2, background_color):
+def make_background_transparent(image_cv2, background_color, all_pixels = False):
     height = len(image_cv2)
     if height == 0:
         return
     width = len(image_cv2[0])
-    visited = []
-    make_transparent = []
-    for y in range(height):
-        line1 = []
-        line2 = []
+    if all_pixels:
+        make_transparent = []
+        for y in range(height):
+            line = []
+            for x in range(width):
+                line.append(same_pixels(image_cv2[y][x], background_color))
+            make_transparent.append(line)
+    else:
+        visited = []
+        make_transparent = []
+        for y in range(height):
+            line1 = []
+            line2 = []
+            for x in range(width):
+                line1.append(False)
+                line2.append(False)
+            visited.append(line1)
+            make_transparent.append(line2)
+        queue = []
         for x in range(width):
-            line1.append(False)
-            line2.append(False)
-        visited.append(line1)
-        make_transparent.append(line2)
-    queue = []
-    for x in range(width):
-        queue.append((x, 0))
-        queue.append((x, height - 1))
-    for y in range(1, height - 1):
-        queue.append((0, y))
-        queue.append((width - 1, y))
-    while len(queue) > 0:
-        x, y = queue.pop(0)
-        if visited[y][x]:
-            continue
-        visited[y][x] = True
-        if not same_pixels(image_cv2[y][x], background_color):
-            continue
-        make_transparent[y][x] = True
-        if x > 0:
-            queue.append((x - 1, y))
-        if x < width - 1:
-            queue.append((x + 1, y))
-        if y > 0:
-            queue.append((x, y - 1))
-        if y < height - 1:
-            queue.append((x, y + 1))
+            queue.append((x, 0))
+            queue.append((x, height - 1))
+        for y in range(1, height - 1):
+            queue.append((0, y))
+            queue.append((width - 1, y))
+        while len(queue) > 0:
+            x, y = queue.pop(0)
+            if visited[y][x]:
+                continue
+            visited[y][x] = True
+            if not same_pixels(image_cv2[y][x], background_color):
+                continue
+            make_transparent[y][x] = True
+            if x > 0:
+                queue.append((x - 1, y))
+            if x < width - 1:
+                queue.append((x + 1, y))
+            if y > 0:
+                queue.append((x, y - 1))
+            if y < height - 1:
+                queue.append((x, y + 1))
     new_arr = []
     for y in range(height):
         line = []
@@ -279,7 +287,7 @@ def new_profile(profile_names, strategies, actions_reset, actions_found, omit_ke
     }
     return state
 
-def parse_argv(arg_flags, flags_shortened) :
+def parse_argv(arg_flags = [], flags_shortened = {}) :
     params = []
     flags_not_found = []
     flags = {}
@@ -292,10 +300,11 @@ def parse_argv(arg_flags, flags_shortened) :
             else:
                 flags_not_found.append(argv[i])
         elif argv[i].startswith('-'):
-            if argv[i][1:] in flags_shortened.keys():
-                flags[flags_shortened[argv[i][1:]]] = True
-            else:
-                flags_not_found.append(argv[i])
+            for option in list(argv[i][1:]):
+                if option in flags_shortened.keys():
+                    flags[flags_shortened[option]] = True
+                else:
+                    flags_not_found.append('-' + option)
         else:
             params.append(argv[i])
     return params, flags_not_found, flags
