@@ -48,9 +48,17 @@ def reset_game(state):
     print('reset number {}'.format(state['counter']))
     return state
 
-def stop_hunting(state):
+def stop_and_quit(state):
     state['counter'] += 1
     state['action'] = 'stop'
+    release('space')
+    print('Found shiny in {} attempts!'.format(state['counter']))
+    save_state_to_file(state)
+    return state
+
+def stop_and_wait(state):
+    state['counter'] += 1
+    state['action'] = 'wait'
     release('space')
     print('Found shiny in {} attempts!'.format(state['counter']))
     save_state_to_file(state)

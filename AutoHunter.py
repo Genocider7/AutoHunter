@@ -4,8 +4,8 @@ from PIL.ImageGrab import grab as grab_screen_image
 from time import time as time_now
 from numpy import uint8, where as np_where
 from keyboard import is_pressed, press, release
-from cv2 import matchTemplate, TM_CCOEFF_NORMED
-from utils import save_state_to_file, load_state_from_file, new_profile, parse_argv
+from cv2 import matchTemplate, TM_CCOEFF_NORMED, imread
+from utils import save_state_to_file, load_state_from_file, new_profile, parse_argv, clean_state
 from sys import stderr
 from os import listdir
 from os.path import isfile
@@ -26,10 +26,11 @@ keys_actions = {
 methods = {
     'spam_a': actions.spam_a,
     'reset_game': actions.reset_game,
-    'stop_hunting': actions.stop_hunting
+    'stop_and_quit': actions.stop_and_quit,
+    'stop_and_wait': actions.stop_and_wait
 }
 
-omit_keys = ['omit keys', 'filenames', 'save file', 'action']
+omit_keys = ['omit keys', 'filenames', 'save file', 'action', 'do save']
 
 strategies = {
     actions.spam_a: 'Program will press A button repeatedly with no logic'
@@ -40,19 +41,21 @@ reset_actions = {
 }
 
 found_actions = {
-    actions.stop_hunting: 'Program will close itself'
+    actions.stop_and_quit: 'Program will close itself',
+    actions.stop_and_wait: 'Program will pause, waiting for input and then continue working'
 }
 
 defaults = {
     'strategy': actions.spam_a,
     'reset': actions.reset_game,
-    'found': actions.stop_hunting
+    'found': actions.stop_and_quit
 }
 
-flags = ['new-profile']
+flags = ['new-profile', 'no-profile']
 
 shortened_flags = {
-    'N': 'new-profile'
+    'N': 'new-profile',
+    'O': 'no-profile'
 }
 
 def create_new_profile():
@@ -61,21 +64,15 @@ def create_new_profile():
     save_state_to_file(state)
     return state
 
-def check_commands(fps, key_presses = None):
-    if key_presses == None:
-        key_presses = {
-            'keys': []    
-        }
-        for key in keys_actions.keys():
-            key_presses[key] = False
+def check_commands(fps):
+    key_presses = []
     target_time = time_now() + 1/fps
     while time_now() < target_time:
         for key in keys_actions.keys():
-            if is_pressed(key) and not key_presses[key]:
-                key_presses[key] = True
-            elif not is_pressed(key) and key_presses[key]:
-                key_presses['keys'].append(key)
-                key_presses[key] = False
+            if key in key_presses:
+                continue
+            if is_pressed(key):
+                key_presses.append(key)
     return key_presses
 
 def parse_commands(key_presses, state):
@@ -125,6 +122,9 @@ def frame(title, offset, state):
     return state
 
 def main():
+    title = 'VisualBoyAdvance'
+    menu_height = 50
+    offset = (8, menu_height + 1, 8, 8)
     params, not_found_flags, parsed_flags = parse_argv(flags, shortened_flags)
     for flag in not_found_flags:
         print('Unrecognized option: {}'.format(flag), file=stderr)
@@ -133,21 +133,36 @@ def main():
     if parsed_flags['new-profile']:
         create_new_profile()
         return
-    if len(params) > 0:
-        save_file = params[0] + '.sav'
+    if parsed_flags['no-profile']:
+        if len(params) < 2:
+            print('No specified filenames. Please enter filename for regular image and shiny image', file = stderr)
+            return
+        regular = params[0]
+        if not isfile(regular):
+            print('File \"{}\" not found'.format(regular), file = stderr)
+            return
+        regular = imread(regular)
+        shiny = params[1]
+        if not isfile(shiny):
+            print('File \"{}\" not found'.format(shiny), file = stderr)
+            return
+        shiny = imread(shiny)
+        state = clean_state(defaults['strategy'], defaults['reset'], defaults['found'], regular, shiny)
     else:
-        save_file = 'default.sav'
-    title = 'VisualBoyAdvance'
-    state = load_state_from_file(save_file, methods, omit_keys)
-    state['action'] = 'go'
-    menu_height = 50
-    offset = (8, menu_height + 1, 8, 8)
-    key_presses = None
+        if len(params) > 0:
+            save_file = params[0] + '.sav'
+        else:
+            save_file = 'default.sav'
+        state = load_state_from_file(save_file, methods, omit_keys)
     while state['action'] != 'stop':
-        key_presses = check_commands(state['fps'], key_presses)
+        key_presses = check_commands(state['fps'])
         state = parse_commands(key_presses, state)
         if state['action'] == 'go':
             state = frame(title, offset, state)
+        elif state['action'] == 'wait':
+            print('Press enter to continue...')
+            input()
+            state['action'] = 'go'
 
 if __name__ == '__main__':
     main()

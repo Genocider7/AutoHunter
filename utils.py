@@ -10,6 +10,8 @@ def edit_state(state, **kwargs):
     return state
 
 def save_state_to_file(state, stream = stdout):
+    if not state['do save']:
+        return
     with open(state['save file'], 'w') as file:
         for key, value in state.items():
             if key in state['omit keys']:
@@ -49,6 +51,7 @@ def load_state_from_file(filename, methods, keys_to_omit = []):
             val_type = locate(val_type)
             val = val_type(val)
         state[key] = val
+    state['do save'] = True
     state['action'] = 'go'
     state['filenames'] = filenames
     state['save file'] = filename
@@ -266,6 +269,7 @@ def new_profile(profile_names, strategies, actions_reset, actions_found, omit_ke
         'regular': imread(regular),
         'shiny': imread(shiny),
         'action': 'go',
+        'do save': True,
         'filenames': {
             'regular': regular,
             'shiny': shiny
@@ -295,3 +299,18 @@ def parse_argv(arg_flags, flags_shortened) :
         else:
             params.append(argv[i])
     return params, flags_not_found, flags
+
+def clean_state(strategy, reset, found, regular, shiny):
+    return {
+        'fps': 10,
+        'strategy': strategy,
+        'reset': reset,
+        'found shiny': found,
+        'counter': 0,
+        'sleep time': 1 / 1000,
+        'do speed up': False,
+        'regular': regular,
+        'shiny': shiny,
+        'action': 'go',
+        'do save': False
+    }
