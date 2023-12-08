@@ -25,7 +25,7 @@ keys_actions = {
 
 methods = {
     'spam_a': actions.spam_a,
-    'reset_game': actions.reset_game,
+    'soft_reset': actions.soft_reset,
     'stop_and_quit': actions.stop_and_quit,
     'stop_and_wait': actions.stop_and_wait,
     'take_screenshot': actions.take_screenshot
@@ -38,7 +38,7 @@ strategies = {
 }
 
 reset_actions = {
-    actions.reset_game: 'Program will forcefully reset whole game'
+    actions.soft_reset: 'Program will perform a soft reset of the game'
 }
 
 found_actions = {
@@ -48,7 +48,7 @@ found_actions = {
 
 defaults = {
     'strategy': actions.spam_a,
-    'reset': actions.reset_game,
+    'reset': actions.soft_reset,
     'found': actions.stop_and_quit
 }
 

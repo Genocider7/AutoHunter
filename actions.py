@@ -40,12 +40,16 @@ def spam_a(state):
     release('z')
     return state
 
-def reset_game(state):
-    press('ctrl')
-    press('r')
+def soft_reset(state):
+    press('backspace')
+    press('enter')
+    press('z')
+    press('x')
     sleep(state['sleep time'])
-    release('r')
-    release('ctrl')
+    release('backspace')
+    release('enter')
+    release('z')
+    release('x')
     print('reset number {}'.format(state['counter']))
     return state
 
