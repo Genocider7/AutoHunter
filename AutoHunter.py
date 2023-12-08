@@ -1,15 +1,15 @@
 from win32gui import GetWindowRect, FindWindow, SetForegroundWindow
 from pywintypes import error as windowException
 from PIL.ImageGrab import grab as grab_screen_image
-from time import time as time_now
+from time import sleep
 from numpy import uint8
-from keyboard import is_pressed, press, release
 from cv2 import imread
 from utils import save_state_to_file, load_state_from_file, new_profile, parse_argv, clean_state, is_image
 from sys import stderr
 from os import listdir, startfile
 from os.path import isfile, join as join_path, normpath
 import actions
+from pynput.keyboard import Listener as Keyboard_listener, Key
 
 keys_actions = {
     'q': actions.pause,
@@ -20,8 +20,17 @@ keys_actions = {
     '4': actions.zoom,
     '=': actions.speed_up,
     '-': actions.slow_down,
-    'esc': actions.stop
+    Key.esc: actions.stop
 }
+
+def check_command(key, state):
+    try:
+        button = key.char
+    except AttributeError:
+        button = key
+    if not button in keys_actions.keys():
+        return
+    state = keys_actions[button](state)
 
 methods = {
     'spam_a': actions.spam_a,
@@ -31,7 +40,7 @@ methods = {
     'take_screenshot': actions.take_screenshot
 }
 
-omit_keys = ['omit keys', 'filenames', 'save file', 'action', 'do save', 'game image']
+omit_keys = ['omit keys', 'filenames', 'save file', 'action', 'do save', 'game image', 'keyboard']
 
 strategies = {
     actions.spam_a: 'Program will press A button repeatedly with no logic'
@@ -68,26 +77,6 @@ def create_new_profile():
     save_state_to_file(state)
     return state
 
-def check_commands(fps):
-    key_presses = []
-    target_time = time_now() + 1/fps
-    while time_now() < target_time:
-        for key in keys_actions.keys():
-            if key in key_presses:
-                continue
-            if is_pressed(key):
-                key_presses.append(key)
-    return key_presses
-
-def parse_commands(key_presses, state):
-    if type(key_presses) == dict:
-        commands = key_presses['keys']
-    else:
-        commands = key_presses
-    for command in commands:
-        state = keys_actions[command](state)
-    return state
-
 def correct_with_offset(bounds, offset):
     return (
         bounds[0] + offset[0],
@@ -107,9 +96,9 @@ def frame(title, offset, state):
         print('Window not found', file = stderr)
         return state
     if state['do speed up']:
-        press('space')
+        state['keyboard'].press(Key.space)
     else:
-        release('space')
+        state['keyboard'].release(Key.space)
     game_image = uint8(grab_screen_image(correct_with_offset(GetWindowRect(handle), offset)))
     game_image = uint8(game_image)[:, :, ::-1,].copy()
     state['game image'] = game_image
@@ -171,15 +160,25 @@ def main():
             print('Couldn\'t find a file \"{}\"'.format(game_file), file = stderr)
             return
         startfile(normpath(game_file))
+    listener = Keyboard_listener(on_press = lambda key: check_command(key, state))
+    listener.start()
     while state['action'] != 'stop':
-        key_presses = check_commands(state['fps'])
-        state = parse_commands(key_presses, state)
+        sleep(1 / state['fps'])
         if state['action'] == 'go':
             state = frame(title, offset, state)
         elif state['action'] == 'wait':
             print('Press enter to continue...')
             input()
             state['action'] = 'go'
+
+def test():
+    regular = imread('torchic.png')
+    shiny = imread('torchic-shiny.png')
+    state = clean_state(defaults['strategy'], defaults['reset'], defaults['found'], regular, shiny)
+    listener = Keyboard_listener(on_press = lambda key: check_command(key, state))
+    listener.start()
+    while state['action'] != 'stop':
+        print(state['fps'])
 
 if __name__ == '__main__':
     main()

@@ -1,16 +1,16 @@
 from utils import edit_state, save_state_to_file
-from keyboard import press, release
+from pynput.keyboard import Key
 from time import sleep
 from os.path import isfile, join as join_path
 from cv2 import imwrite
 
 def stop(state):
-    release('space')
+    state['keyboard'].release(Key.space)
     save_state_to_file(state)
     return edit_state(state, action = 'stop')
 
 def pause(state):
-    release('space')
+    state['keyboard'].release(Key.space)
     return edit_state(state, action = 'pause')
 
 def start(state):
@@ -35,34 +35,34 @@ def slow_down(state):
     return edit_state(state, do_speed_up = False)
 
 def spam_a(state):
-    press('z')
+    state['keyboard'].press('z')
     sleep(state['sleep time'])
-    release('z')
+    state['keyboard'].release('z')
     return state
 
 def soft_reset(state):
-    press('backspace')
-    press('enter')
-    press('z')
-    press('x')
+    state['keyboard'].press(Key.backspace)
+    state['keyboard'].press(Key.enter)
+    state['keyboard'].press('z')
+    state['keyboard'].press('x')
     sleep(state['sleep time'])
-    release('backspace')
-    release('enter')
-    release('z')
-    release('x')
+    state['keyboard'].release(Key.backspace)
+    state['keyboard'].release(Key.enter)
+    state['keyboard'].release('z')
+    state['keyboard'].release('x')
     print('reset number {}'.format(state['counter']))
     return state
 
 def stop_and_quit(state):
     state['action'] = 'stop'
-    release('space')
+    state['keyboard'].release(Key.space)
     print('Found shiny in {} attempts!'.format(state['counter']))
     save_state_to_file(state)
     return state
 
 def stop_and_wait(state):
     state['action'] = 'wait'
-    release('space')
+    state['keyboard'].release(Key.space)
     print('Found shiny in {} attempts!'.format(state['counter']))
     save_state_to_file(state)
     return state

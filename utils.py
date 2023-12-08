@@ -3,6 +3,7 @@ from cv2 import imread, matchTemplate, TM_CCOEFF_NORMED
 from sys import stdout, argv
 from numpy import asarray, uint8
 from os.path import isfile
+from pynput.keyboard import Controller as Keyboard_controller
 
 def edit_state(state, **kwargs):
     for key, value in kwargs.items():
@@ -106,6 +107,7 @@ def load_state_from_file(filename, methods, keys_to_omit = []):
     state['filenames'] = filenames
     state['save file'] = filename
     state['omit keys'] = keys_to_omit
+    state['keyboard'] = Keyboard_controller()
     return state
 
 def same_pixels(pixel1, pixel2):
@@ -333,7 +335,9 @@ def new_profile(profile_names, strategies, actions_reset, actions_found, omit_ke
             'shiny': shiny
         },
         'save file': name + '.sav',
-        'omit keys': omit_keys
+        'omit keys': omit_keys,
+        'do save': True,
+        'keyboard': Keyboard_controller()
     }
     return state
 
@@ -371,7 +375,8 @@ def clean_state(strategy, reset, found, regular, shiny):
         'regular': regular,
         'shiny': shiny,
         'action': 'go',
-        'do save': False
+        'do save': False,
+        'keyboard': Keyboard_controller()
     }
 
 def is_image(parent_image, template, trust = 0.999):
