@@ -77,4 +77,4 @@ def take_screenshot(state):
 
 def print_and_continue(state):
     print('Found shiny in {} attempts!'.format(state['counter']))
-    return reset_game(state)
+    return soft_reset(state)
