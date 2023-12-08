@@ -1,6 +1,8 @@
 from utils import edit_state, save_state_to_file
 from keyboard import press, release
 from time import sleep
+from os.path import isfile, join as join_path
+from cv2 import imwrite
 
 def stop(state):
     release('space')
@@ -44,12 +46,10 @@ def reset_game(state):
     sleep(state['sleep time'])
     release('r')
     release('ctrl')
-    state['counter'] += 1
     print('reset number {}'.format(state['counter']))
     return state
 
 def stop_and_quit(state):
-    state['counter'] += 1
     state['action'] = 'stop'
     release('space')
     print('Found shiny in {} attempts!'.format(state['counter']))
@@ -57,9 +57,20 @@ def stop_and_quit(state):
     return state
 
 def stop_and_wait(state):
-    state['counter'] += 1
     state['action'] = 'wait'
     release('space')
     print('Found shiny in {} attempts!'.format(state['counter']))
     save_state_to_file(state)
     return state
+
+def take_screenshot(state):
+    filename = join_path('screenshots', 'encounter_' + str(state['counter']) + '.png')
+    if isfile(filename):
+        return state
+    imwrite(filename, state['game image'])
+    print('saved screenshot to {}'.format(filename))
+    return state
+
+def print_and_continue(state):
+    print('Found shiny in {} attempts!'.format(state['counter']))
+    return reset_game(state)

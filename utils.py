@@ -1,5 +1,5 @@
 from pydoc import locate
-from cv2 import imread
+from cv2 import imread, matchTemplate, TM_CCOEFF_NORMED
 from sys import stdout, argv
 from numpy import asarray, uint8
 from os.path import isfile
@@ -26,6 +26,24 @@ def save_state_to_file(state, stream = stdout):
                 file.write('_')
                 if callable(value):
                     file.write(value.__name__)
+                elif type(value) == dict:
+                    for subkey, subval in value.items():
+                        file.write('\n\t')
+                        file.write(type(subkey).__name__)
+                        file.write('_')
+                        string_key = subkey.__name__ if callable(subkey) else str(subkey)
+                        file.write(string_key)
+                        file.write('=')
+                        if 'additional_' + string_key in state['filenames'].keys():
+                            file.write('file_')
+                            file.write(state['filenames']['additional_' + string_key])
+                        else:
+                            file.write(type(subval).__name__)
+                            file.write('_')
+                            if callable(subval):
+                                file.write(subval.__name__)
+                            else:
+                                file.write(str(subval))
                 else:
                     file.write(str(value))
             file.write('\n')
@@ -37,9 +55,36 @@ def load_state_from_file(filename, methods, keys_to_omit = []):
     lines = raw_text.split('\n')
     state = {}
     filenames = {}
+    temp_field_name = None
+    temp_dict = None
     for line in lines:
         if line == '':
             continue
+        if type(temp_dict) == dict:
+            if line.startswith('\t'):
+                subkey, subval = line[1:].split('=', 1)
+                key_type, key_name = subkey.split('_', 1)
+                original_key_name = key_name
+                if key_type == 'function':
+                    key_name = methods[key_name]
+                else:
+                    key_type = locate(key_type)
+                    key_name = key_type(key_name)
+                val_type, val = subval.split('_', 1)
+                if val_type == 'function':
+                    val = methods[val]
+                elif val_type == 'file':
+                    filenames['additional_' + original_key_name] = val
+                    val = imread(val)
+                else:
+                    val_type = locate(val_type)
+                    val = val_type(val)
+                temp_dict[key_name] = val
+                continue
+            else:
+                state[temp_field_name] = temp_dict.copy()
+                temp_dict = None
+                temp_field_name = None
         key, raw_val = line.split('=', 1)
         val_type, val = raw_val.split('_', 1)
         if val_type == 'function':
@@ -47,10 +92,15 @@ def load_state_from_file(filename, methods, keys_to_omit = []):
         elif val_type == 'file':
             filenames[key] = val
             val = imread(val)
+        elif val_type == 'dict':
+            temp_field_name = key
+            temp_dict = {}
         else:
             val_type = locate(val_type)
             val = val_type(val)
         state[key] = val
+    if type(temp_dict) == dict:
+        state[temp_field_name] = temp_dict.copy()
     state['do save'] = True
     state['action'] = 'go'
     state['filenames'] = filenames
@@ -323,3 +373,10 @@ def clean_state(strategy, reset, found, regular, shiny):
         'action': 'go',
         'do save': False
     }
+
+def is_image(parent_image, template, trust = 0.999):
+    from cv2 import cvtColor, COLOR_BGRA2BGR
+    parent_image = cvtColor(parent_image, COLOR_BGRA2BGR)
+    template = cvtColor(template, COLOR_BGRA2BGR)
+    heat_map = matchTemplate(parent_image, template, TM_CCOEFF_NORMED)
+    return heat_map.max() >= trust

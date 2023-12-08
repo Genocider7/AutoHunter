@@ -2,13 +2,13 @@ from win32gui import GetWindowRect, FindWindow, SetForegroundWindow
 from pywintypes import error as windowException
 from PIL.ImageGrab import grab as grab_screen_image
 from time import time as time_now
-from numpy import uint8, where as np_where
+from numpy import uint8
 from keyboard import is_pressed, press, release
-from cv2 import matchTemplate, TM_CCOEFF_NORMED, imread
-from utils import save_state_to_file, load_state_from_file, new_profile, parse_argv, clean_state
+from cv2 import imread
+from utils import save_state_to_file, load_state_from_file, new_profile, parse_argv, clean_state, is_image
 from sys import stderr
 from os import listdir, startfile
-from os.path import isfile, join as join_path
+from os.path import isfile, join as join_path, normpath
 import actions
 
 keys_actions = {
@@ -27,10 +27,11 @@ methods = {
     'spam_a': actions.spam_a,
     'reset_game': actions.reset_game,
     'stop_and_quit': actions.stop_and_quit,
-    'stop_and_wait': actions.stop_and_wait
+    'stop_and_wait': actions.stop_and_wait,
+    'take_screenshot': actions.take_screenshot
 }
 
-omit_keys = ['omit keys', 'filenames', 'save file', 'action', 'do save']
+omit_keys = ['omit keys', 'filenames', 'save file', 'action', 'do save', 'game image']
 
 strategies = {
     actions.spam_a: 'Program will press A button repeatedly with no logic'
@@ -105,20 +106,24 @@ def frame(title, offset, state):
     except windowException:
         print('Window not found', file = stderr)
         return state
-    if state['do speed up'] and not is_pressed('space'):
+    if state['do speed up']:
         press('space')
-    elif not state['do speed up'] and is_pressed('space'):
+    else:
         release('space')
-    game_image = grab_screen_image(correct_with_offset(GetWindowRect(handle), offset))
-    game_image = uint8(game_image)[:, :, ::-1].copy()
-    heat_map = matchTemplate(game_image, state['shiny'], TM_CCOEFF_NORMED)
-    matches = np_where(heat_map >= 0.9)
-    if (len(matches[0]) > 0):
+    game_image = uint8(grab_screen_image(correct_with_offset(GetWindowRect(handle), offset)))
+    game_image = uint8(game_image)[:, :, ::-1,].copy()
+    state['game image'] = game_image
+    if is_image(game_image, state['shiny']):
+        state['counter'] += 1
         state = state['found shiny'](state)
         return state
-    heat_map = matchTemplate(game_image, state['regular'], TM_CCOEFF_NORMED)
-    matches = np_where(heat_map >= 0.9)
-    if (len(matches[0]) > 0):
+    if 'additional' in state.keys():
+        for key in state['additional'].keys():
+            image = imread(key)
+            if is_image(game_image, image, True):
+                state = state['additional'][key](state)
+    if is_image(game_image, state['regular']):
+        state['counter'] += 1
         state = state['reset'](state)
         return state
     state = state['strategy'](state)
@@ -165,7 +170,7 @@ def main():
         if not isfile(game_file):
             print('Couldn\'t find a file \"{}\"'.format(game_file), file = stderr)
             return
-        startfile(game_file)
+        startfile(normpath(game_file))
     while state['action'] != 'stop':
         key_presses = check_commands(state['fps'])
         state = parse_commands(key_presses, state)
