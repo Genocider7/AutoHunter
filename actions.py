@@ -7,31 +7,40 @@ from cv2 import imwrite
 def stop(state):
     state['keyboard'].release(Key.space)
     save_state_to_file(state)
+    print('Stopped')
     return edit_state(state, action = 'stop')
 
 def pause(state):
     state['keyboard'].release(Key.space)
+    print('Paused')
     return edit_state(state, action = 'pause')
 
 def start(state):
+    print('Resumed')
     return edit_state(state, action = 'go')
 
 def slow(state):
+    print('Changed fps to 5')
     return edit_state(state, fps = 5)
 
 def normal(state):
+    print('Changed fps to 10')
     return edit_state(state, fps = 10)
 
 def fast(state):
+    print('Changed fps to 20')
     return edit_state(state, fps = 20)
 
 def zoom(state):
+    print('Changed fps to 50')
     return edit_state(state, fps = 50)
 
 def speed_up(state):
+    print('Toggled speed up to True')
     return edit_state(state, do_speed_up = True)
 
 def slow_down(state):
+    print('Toggled speed up to False')
     return edit_state(state, do_speed_up = False)
 
 def spam_a(state):
